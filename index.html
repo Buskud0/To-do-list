@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8" />
+    <!--
+        viewport meta tag - būtinas Responsive Design'ui.
+        Liepia naršyklei nenaudoti zoom'o mobiliuose įrenginiuose.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Todo programa</title>
+
+    <style>
+        /* ====================================================
+           CSS - STILIAI
+           ==================================================== */
+
+        /* CSS kintamieji - spalvos vienoje vietoje */
+        :root {
+            --blue:    #3b82f6;
+            --blue-dk: #2563eb;
+            --green:   #22c55e;
+            --red:     #ef4444;
+            --gray:    #6b7280;
+            --light:   #f3f4f6;
+            --white:   #ffffff;
+            --text:    #111827;
+            --border:  #e5e7eb;
+        }
+
+        /* Baziniai stiliai */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: sans-serif;
+            background: var(--light);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ---- MYGTUKAI ---- */
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: opacity 0.15s;
+        }
+        button:hover { opacity: 0.85; }
+
+        .btn-primary  { background: var(--blue);  color: var(--white); }
+        .btn-danger   { background: var(--red);   color: var(--white); }
+        .btn-success  { background: var(--green); color: var(--white); }
+        .btn-gray     { background: var(--gray);  color: var(--white); }
+        .btn-small    { padding: 4px 10px; font-size: 12px; }
+
+        /* ---- INPUT LAUKAI ---- */
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 15px;
+            outline: none;
+        }
+        input:focus { border-color: var(--blue); }
+
+        /* ---- KLAIDŲ / SĖKMĖS PRANEŠIMAI ---- */
+        .msg {
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-top: 8px;
+            display: none; /* rodome tik kai reikia */
+        }
+        .msg.error   { background: #fee2e2; color: #991b1b; }
+        .msg.success { background: #dcfce7; color: #166534; }
+
+        /* ====================================================
+           AUTENTIKACIJOS EKRANAS (prisijungimas / registracija)
+           ==================================================== */
+        #auth-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .auth-card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 32px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .auth-card h1 {
+            font-size: 22px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .field { margin-bottom: 14px; }
+        .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+
+        .auth-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .auth-actions button { flex: 1; }
+
+        /* ====================================================
+           PAGRINDINIS TODO EKRANAS
+           ==================================================== */
+        #app-screen { display: none; padding: 16px; }
+
+        /* ---- TOP BAR ---- */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--white);
+            border-radius: 10px;
+            padding: 12px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .topbar h2 { font-size: 18px; }
+
+        /* ---- FILTRAI ---- */
+        .filters {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            background: var(--light);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 4px 14px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .filter-btn.active {
+            background: var(--blue);
+            color: var(--white);
+            border-color: var(--blue);
+        }
+
+        /* ---- NAUJOS UŽDUOTIES FORMA ---- */
+        .add-form {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .add-form input { flex: 1; min-width: 180px; }
+
+        /* ---- UŽDUOČIŲ SĄRAŠAS ---- */
+        .todo-list { display: flex; flex-direction: column; gap: 8px; }
+
+        .todo-item {
+            background: var(--white);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            flex-wrap: wrap;
+        }
+
+        /* Checkbox stilius */
+        .todo-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--green);
+            flex-shrink: 0;
+        }
+
+        .todo-title {
+            flex: 1;
+            font-size: 15px;
+            min-width: 120px;
+        }
+
+        /* Atliktos užduotys - perbrauktos */
+        .todo-title.done {
+            text-decoration: line-through;
+            color: var(--gray);
+        }
+
+        /* Redagavimo laukas */
+        .edit-input {
+            flex: 1;
+            padding: 4px 8px;
+            border: 1px solid var(--blue);
+            border-radius: 4px;
+            font-size: 15px;
+            min-width: 120px;
+        }
+
+        .todo-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+        /* Tuščio sąrašo pranešimas */
+        .empty-msg {
+            text-align: center;
+            color: var(--gray);
+            padding: 40px 0;
+            font-size: 15px;
+        }
+
+        /* ====================================================
+           RESPONSIVE DESIGN
+           Naudojame media queries - keičiame išdėstymą
+           pagal ekrano plotį.
+           ==================================================== */
+
+        /* ---- PLANŠETĖS (768px ir mažiau) ---- */
+        @media (max-width: 768px) {
+            #app-screen { padding: 10px; }
+
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .auth-card { padding: 24px; }
+        }
+
+        /* ---- TELEFONAI (480px ir mažiau) ---- */
+        @media (max-width: 480px) {
+            .auth-card { padding: 20px; }
+            .auth-card h1 { font-size: 18px; }
+
+            .topbar { padding: 10px 14px; }
+            .topbar h2 { font-size: 16px; }
+
+            .add-form { flex-direction: column; }
+            .add-form button { width: 100%; }
+
+            .todo-item { padding: 10px 12px; }
+            .todo-title { font-size: 14px; }
+
+            .todo-actions { width: 100%; justify-content: flex-end; }
+
+            button { font-size: 13px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================
+     AUTENTIKACIJOS EKRANAS
+     Rodomas kai vartotojas neprisijungęs.
+     ============================================================ -->
+<div id="auth-screen">
+    <div class="auth-card">
+        <h1>📝 Todo programa</h1>
+
+        <div class="field">
+            <label for="username">Vartotojo vardas</label>
+            <input type="text" id="username" placeholder="Vardas..." />
+        </div>
+
+        <div class="field">
+            <label for="password">Slaptažodis</label>
+            <input type="password" id="password" placeholder="Slaptažodis..." />
+        </div>
+
+        <div id="auth-msg" class="msg"></div>
+
+        <div class="auth-actions">
+            <button class="btn-primary" onclick="login()">Prisijungti</button>
+            <button class="btn-gray"    onclick="register()">Registruotis</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     PAGRINDINIS EKRANAS
+     Rodomas kai vartotojas prisijungęs.
+     ============================================================ -->
+<div id="app-screen">
+
+    <!-- Viršutinė juosta -->
+    <div class="topbar">
+        <h2>📝 Mano užduotys <span id="username-label" style="color:var(--blue)"></span></h2>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <!-- Filtravimo mygtukai - naudoja query parametrą -->
+            <div class="filters">
+                <button class="filter-btn active" onclick="setFilter(null, this)">Visos</button>
+                <button class="filter-btn" onclick="setFilter(false, this)">Aktyvios</button>
+                <button class="filter-btn" onclick="setFilter(true, this)">Atliktos</button>
+            </div>
+            <button class="btn-danger btn-small" onclick="logout()">Atsijungti</button>
+        </div>
+    </div>
+
+    <!-- Naujos užduoties forma -->
+    <div class="add-form">
+        <input type="text" id="new-todo" placeholder="Nauja užduotis..." />
+        <button class="btn-primary" onclick="createTodo()">+ Pridėti</button>
+    </div>
+
+    <div id="app-msg" class="msg"></div>
+
+    <!-- Užduočių sąrašas - pildomas JS -->
+    <div id="todo-list" class="todo-list"></div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT - LOGIKA
+     ============================================================ -->
+<script>
+    // ----------------------------------------------------------------
+    // KONFIGŪRACIJA
+    // ----------------------------------------------------------------
+    const API = "http://localhost:8000";  // Back-end adresas
+
+    // ----------------------------------------------------------------
+    // BŪSENA (state) - kintamieji saugomi naršyklės atmintyje
+    // ----------------------------------------------------------------
+    let token    = localStorage.getItem("token");     // Sesijos tokenas
+    let username = localStorage.getItem("username");  // Prisijungusio vartotojo vardas
+    let currentFilter = null;  // null = visos, false = aktyvios, true = atliktos
+
+    // ----------------------------------------------------------------
+    // PAGALBINĖS FUNKCIJOS
+    // ----------------------------------------------------------------
+
+    /**
+     * Rodo pranešimą ekrane.
+     * @param {string} elementId - pranešimo div ID
+     * @param {string} text      - pranešimo tekstas
+     * @param {string} type      - "error" arba "success"
+     */
+    function showMsg(elementId, text, type) {
+        const el = document.getElementById(elementId);
+        el.textContent = text;
+        el.className = `msg ${type}`;
+        el.style.display = "block";
+        // Po 4 sekundžių automatiškai paslėpiame
+        setTimeout(() => { el.style.display = "none"; }, 4000);
+    }
+
+    /**
+     * Bendras API užklausų kūrėjas.
+     * 
+     * Čia centralizuojame visus fetch() kvietimus.
+     * Visi endpoint'ai naudoja šią funkciją.
+     * 
+     * @param {string} method  - HTTP metodas: GET, POST, PATCH, DELETE
+     * @param {string} path    - URL kelias, pvz.: "/todos/5"
+     * @param {object} body    - body duomenys (nebūtina)
+     * @returns {Promise}      - serverio atsakymas
+     */
+    async function api(method, path, body = null) {
+        const options = {
+            method: method,
+            headers: {
+                "Content-Type": "application/json",
+                // Authorization header - siųs tokeną jei turime
+                // BE pusėje get_current_user() jį tikrina
+                ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            }
+        };
+
+        if (body) {
+            options.body = JSON.stringify(body);
+        }
+
+        const response = await fetch(`${API}${path}`, options);
+
+        // 204 No Content - tuščias atsakymas (DELETE atvejis)
+        if (response.status === 204) return null;
+
+        const data = await response.json();
+
+        // Jei serveris grąžino klaidą - metame exception
+        if (!response.ok) {
+            throw new Error(data.detail || "Serverio klaida");
+        }
+
+        return data;
+    }
+
+    // ----------------------------------------------------------------
+    // EKRANŲ PERJUNGIMAS
+    // ----------------------------------------------------------------
+
+    function showAuthScreen() {
+        document.getElementById("auth-screen").style.display = "flex";
+        document.getElementById("app-screen").style.display  = "none";
+    }
+
+    function showAppScreen() {
+        document.getElementById("auth-screen").style.display = "none";
+        document.getElementById("app-screen").style.display  = "block";
+        document.getElementById("username-label").textContent = username;
+    }
+
+    // ----------------------------------------------------------------
+    // AUTENTIKACIJA
+    // ----------------------------------------------------------------
+
+    /**
+     * POST /register
+     * Registruoja naują vartotoją.
+     */
+    async function register() {
+        const uname = document.getElementById("username").value.trim();
+        const pass  = document.getElementById("password").value;
+
+        try {
+            await api("POST", "/register", { username: uname, password: pass });
+            showMsg("auth-msg", "Registracija sėkminga! Dabar galite prisijungti.", "success");
+        } catch (err) {
+            showMsg("auth-msg", err.message, "error");
+        }
+    }
+
+    /**
+     * POST /login
+     * Prisijungia ir išsaugo tokeną.
+     */
+    async function login() {
+        const uname = document.getElementById("username").value.trim();
+        const pass  = document.getElementById("password").value;
+
+        try {
+            const data = await api("POST", "/login", { username: uname, password: pass });
+
+            // Išsaugome tokeną naršyklės localStorage
+            token    = data.token;
+            username = data.username;
+            localStorage.setItem("token",    token);
+            localStorage.setItem("username", username);
+
+            showAppScreen();
+            loadTodos();
+        } catch (err) {
+            showMsg("auth-msg", err.message, "error");
+        }
+    }
+
+    /**
+     * POST /logout
+     * Atsijungia ir grįžta į prisijungimo ekraną.
+     */
+    async function logout() {
+        try {
+            await api("POST", "/logout");
+        } catch (_) {
+            // Nekreipiame dėmesio į klaidas atsijungiant
+        }
+
+        // Valome localStorage
+        token    = null;
+        username = null;
+        localStorage.removeItem("token");
+        localStorage.removeItem("username");
+
+        showAuthScreen();
+    }
+
+    // ----------------------------------------------------------------
+    // FILTRAVIMAS
+    // ----------------------------------------------------------------
+
+    /**
+     * Nustato aktyvų filtrą ir perkrauna sąrašą.
+     * Filtras siunčiamas kaip query parametras: ?done=true
+     */
+    function setFilter(value, btn) {
+        currentFilter = value;
+
+        // Pakeičiame aktyvaus mygtuko stilių
+        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+
+        loadTodos();
+    }
+
+    // ----------------------------------------------------------------
+    // UŽDUOTYS - SKAITYMAS
+    // ----------------------------------------------------------------
+
+    /**
+     * GET /todos arba GET /todos?done=true/false
+     * Gauna ir parodo užduotis.
+     */
+    async function loadTodos() {
+        // Suformuojame URL su query parametru jei reikia
+        let path = "/todos";
+        if (currentFilter !== null) {
+            path += `?done=${currentFilter}`;
+        }
+
+        try {
+            const todos = await api("GET", path);
+            renderTodos(todos);
+        } catch (err) {
+            showMsg("app-msg", err.message, "error");
+        }
+    }
+
+    /**
+     * Piešia užduočių sąrašą į HTML.
+     */
+    function renderTodos(todos) {
+        const container = document.getElementById("todo-list");
+
+        if (todos.length === 0) {
+            container.innerHTML = `<div class="empty-msg">Nėra užduočių 🎉</div>`;
+            return;
+        }
+
+        container.innerHTML = todos.map(todo => `
+            <div class="todo-item" id="item-${todo.id}">
+
+                <!-- Checkbox - pakeičia užduoties statusą (PATCH) -->
+                <input
+                    type="checkbox"
+                    ${todo.done ? "checked" : ""}
+                    onchange="toggleDone(${todo.id}, this.checked)"
+                />
+
+                <!-- Pavadinimas - dukart spustelėjus galima redaguoti -->
+                <span
+                    class="todo-title ${todo.done ? 'done' : ''}"
+                    id="title-${todo.id}"
+                    ondblclick="startEdit(${todo.id}, '${escapeQuotes(todo.title)}')"
+                    title="Du kartus spustelėkite norėdami redaguoti"
+                >
+                    ${escapeHtml(todo.title)}
+                </span>
+
+                <div class="todo-actions">
+                    <button class="btn-gray btn-small"
+                        onclick="startEdit(${todo.id}, '${escapeQuotes(todo.title)}')">
+                        ✏️
+                    </button>
+                    <button class="btn-danger btn-small"
+                        onclick="deleteTodo(${todo.id})">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    // ----------------------------------------------------------------
+    // UŽDUOTYS - KŪRIMAS
+    // ----------------------------------------------------------------
+
+    /**
+     * POST /todos
+     * Sukuria naują užduotį.
+     */
+    async function createTodo() {
+        const input = document.getElementById("new-todo");
+        const title = input.value.trim();
+
+        if (!title) {
+            showMsg("app-msg", "Įveskite užduoties pavadinimą", "error");
+            return;
+        }
+
+        try {
+            await api("POST", "/todos", { title: title });
+            input.value = "";  // Išvalome lauką
+            loadTodos();
+        } catch (err) {
+            showMsg("app-msg", err.message, "error");
+        }
+    }
+
+    // Enter klavišas taip pat kuria užduotį
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("new-todo").addEventListener("keydown", e => {
+            if (e.key === "Enter") createTodo();
+        });
+        document.getElementById("password").addEventListener("keydown", e => {
+            if (e.key === "Enter") login();
+        });
+    });
+
+    // ----------------------------------------------------------------
+    // UŽDUOTYS - ATNAUJINIMAS (PATCH)
+    // ----------------------------------------------------------------
+
+    /**
+     * PATCH /todos/{id}
+     * Pakeičia atlikimo statusą (checkbox).
+     */
+    async function toggleDone(id, done) {
+        try {
+            await api("PATCH", `/todos/${id}`, { done: done });
+            loadTodos();
+        } catch (err) {
+            showMsg("app-msg", err.message, "error");
+        }
+    }
+
+    /**
+     * Įjungia redagavimo režimą - pakeičia span į input.
+     */
+    function startEdit(id, currentTitle) {
+        const item = document.getElementById(`item-${id}`);
+        const titleEl = document.getElementById(`title-${id}`);
+
+        // Slepiame pavadinimą
+        titleEl.style.display = "none";
+
+        // Sukuriame redagavimo lauką
+        const input = document.createElement("input");
+        input.type      = "text";
+        input.className = "edit-input";
+        input.value     = currentTitle;
+        input.id        = `edit-${id}`;
+
+        // Išsaugome Enter paspaudus
+        input.addEventListener("keydown", e => {
+            if (e.key === "Enter")  saveEdit(id);
+            if (e.key === "Escape") cancelEdit(id, currentTitle);
+        });
+
+        // Įdedame lauką prieš veiksmus
+        const actionsEl = item.querySelector(".todo-actions");
+        item.insertBefore(input, actionsEl);
+        input.focus();
+        input.select();
+
+        // Pakeičiame mygtukus
+        actionsEl.innerHTML = `
+            <button class="btn-success btn-small" onclick="saveEdit(${id})">✓</button>
+            <button class="btn-gray btn-small" onclick="cancelEdit(${id}, '${escapeQuotes(currentTitle)}')">✕</button>
+        `;
+    }
+
+    /**
+     * PATCH /todos/{id}
+     * Išsaugo naują pavadinimą.
+     */
+    async function saveEdit(id) {
+        const input = document.getElementById(`edit-${id}`);
+        const title = input.value.trim();
+
+        if (!title) {
+            showMsg("app-msg", "Pavadinimas negali būti tuščias", "error");
+            return;
+        }
+
+        try {
+            await api("PATCH", `/todos/${id}`, { title: title });
+            loadTodos();
+        } catch (err) {
+            showMsg("app-msg", err.message, "error");
+        }
+    }
+
+    /**
+     * Atšaukia redagavimą - grąžina originalų tekstą.
+     */
+    function cancelEdit(id, originalTitle) {
+        loadTodos();
+    }
+
+    // ----------------------------------------------------------------
+    // UŽDUOTYS - TRYNIMAS
+    // ----------------------------------------------------------------
+
+    /**
+     * DELETE /todos/{id}
+     * Ištrina užduotį.
+     */
+    async function deleteTodo(id) {
+        if (!confirm("Ištrinti šią užduotį?")) return;
+
+        try {
+            await api("DELETE", `/todos/${id}`);
+            loadTodos();
+        } catch (err) {
+            showMsg("app-msg", err.message, "error");
+        }
+    }
+
+    // ----------------------------------------------------------------
+    // PAGALBINĖS SAUGOS FUNKCIJOS
+    // ----------------------------------------------------------------
+
+    /** Apsauga nuo XSS - escapiname HTML simbolius */
+    function escapeHtml(text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+    }
+
+    /** Escapiname kabutes onclick atributuose */
+    function escapeQuotes(text) {
+        return text.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    }
+
+    // ----------------------------------------------------------------
+    // PALEIDIMAS
+    // Tikriname ar vartotojas jau prisijungęs (ar yra išsaugotas tokenas)
+    // ----------------------------------------------------------------
+    if (token) {
+        showAppScreen();
+        loadTodos();
+    } else {
+        showAuthScreen();
+    }
+</script>
+
+</body>
+</html>
