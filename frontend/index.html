@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Todo programa</title>
+
+    <style>
+        /* ====================================================
+           CSS KINTAMIEJI - tamsus dizainas
+           ==================================================== */
+        :root {
+            --bg:        #16161f;       /* Pagrindinis fonas */
+            --surface:   #2a2a3d;       /* Kortelių fonas - daug šviesesnė */
+            --surface2:  #323248;       /* Inputų fonas */
+            --border:    #4a4a6a;       /* Linijų spalva - ryškesnė */
+            --blue:      #818cf8;       /* Akcentas - šviesesnė violetinė */
+            --blue-dk:   #6366f1;
+            --green:     #4ade80;       /* Šviesesnė žalia */
+            --red:       #f87171;       /* Šviesesnė raudona */
+            --text:      #f0f0ff;       /* Beveik balta */
+            --text-dim:  #a0a0c0;       /* Silpnesnis - bet ne per tamsus */
+            --radius:    999px;
+            --radius-md: 16px;
+            --radius-sm: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ====================================================
+           MYGTUKAI - pilnai apvalūs kampai
+           ==================================================== */
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: var(--radius); /* <-- pilnai apvalūs */
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            transition: transform 0.1s, opacity 0.15s;
+        }
+        button:hover  { opacity: 0.85; transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+
+        .btn-primary { background: var(--blue); color: #fff; }
+        .btn-danger  { background: var(--red);  color: #fff; }
+        .btn-success { background: var(--green); color: #fff; }
+        .btn-ghost   {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover { color: var(--text); border-color: var(--text-dim); opacity: 1; background: var(--surface2); }
+
+        /* Maži mygtukai todo eilutėse - padidinti */
+        .btn-sm { padding: 10px 20px; font-size: 15px; }
+
+        /* ====================================================
+           INPUT LAUKAI
+           ==================================================== */
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 14px 18px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 15px;
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input::placeholder { color: var(--text-dim); }
+        input:focus { border-color: var(--blue); }
+
+        /* ====================================================
+           PRANEŠIMAI
+           ==================================================== */
+        .msg {
+            padding: 12px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
+        .msg.error   { background: #3b1010; color: #fca5a5; }
+        .msg.success { background: #0f2d1a; color: #86efac; }
+
+        /* ====================================================
+           AUTENTIKACIJOS EKRANAS
+           ==================================================== */
+        #auth-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-card h1 {
+            font-size: 26px;
+            margin-bottom: 28px;
+            text-align: center;
+            letter-spacing: -0.5px;
+        }
+
+        .field { margin-bottom: 16px; }
+        .field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .auth-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .auth-actions button { flex: 1; padding: 14px; }
+
+        /* ====================================================
+           PAGRINDINIS EKRANAS
+           ==================================================== */
+        #app-screen {
+            display: none;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        /* ---- VIRŠUTINĖ JUOSTA ---- */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 28px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .topbar h2 {
+            font-size: 20px;
+            letter-spacing: -0.5px;
+        }
+
+        .topbar h2 span { color: var(--blue); }
+
+        .btn-logout { padding: 12px 28px; font-size: 15px; }
+
+        /* ---- PAGRINDINIS TURINIO BLOKAS ---- */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 24px 32px 0 32px;
+            gap: 16px;
+        }
+
+        /* ---- FILTRAI VIRŠUJE ---- */
+        .filters {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .filter-btn {
+            background: var(--surface);
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 10px 22px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .filter-btn:hover  { background: var(--surface2); color: var(--text); transform: none; opacity: 1; border-color: var(--text-dim); }
+        .filter-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+        .filter-btn.active:hover { opacity: 0.9; }
+
+        /* ---- TODO SĄRAŠAS ---- */
+        #todo-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding-right: 4px;
+            padding-bottom: 12px;
+        }
+
+        #todo-list::-webkit-scrollbar { width: 6px; }
+        #todo-list::-webkit-scrollbar-track { background: transparent; }
+        #todo-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+        /* ---- TODO KORTELĖS - pilnai apvalios ---- */
+        .todo-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius); /* <-- pilnai apvalios */
+            padding: 16px 22px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: border-color 0.2s;
+            flex-wrap: wrap;
+        }
+        .todo-item:hover { border-color: var(--text-dim); }
+
+        .todo-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--green);
+            flex-shrink: 0;
+        }
+
+        .todo-title {
+            flex: 1;
+            font-size: 16px;
+            min-width: 120px;
+        }
+
+        .todo-title.done {
+            text-decoration: line-through;
+            color: var(--text-dim);
+        }
+
+        .edit-input {
+            flex: 1;
+            padding: 8px 14px;
+            background: var(--bg);
+            border: 1px solid var(--blue);
+            border-radius: var(--radius);
+            color: var(--text);
+            font-size: 15px;
+            min-width: 120px;
+            outline: none;
+        }
+
+        .todo-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+        /* Patvirtinimo popup'as po delete mygtuku */
+        .delete-confirm {
+            position: absolute;
+            right: 0;                   /* prie dešiniojo krašto */
+            background: var(--surface2);
+            border: 1px solid #8b3a3a;
+            border-radius: var(--radius); /* pilnai apvalūs kampai */
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            z-index: 10;
+            white-space: nowrap;
+            font-size: 14px;
+            color: var(--text);
+            margin-top: 6px;
+        }
+
+        /* Todo item reikalingas position:relative kad popup'as žinotų kur stovėti */
+        .todo-item { position: relative; }
+
+        /* Šiukšliadėžės mygtukas - šviesesnė raudona */
+        .btn-delete {
+            background: #5c1f1f;
+            color: #ffb3b3;
+            border: 1px solid #8b3a3a;
+            border-radius: var(--radius);
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+        .btn-delete:hover { background: #722828; border-color: #aa4444; opacity: 1; }
+
+        .empty-msg {
+            text-align: center;
+            color: var(--text-dim);
+            padding: 60px 0;
+            font-size: 16px;
+        }
+
+        /* ====================================================
+           APAČIOS ĮVESTIS
+           ==================================================== */
+        .bottom-bar {
+            flex-shrink: 0;
+            padding: 16px 60px 40px 60px;
+        }
+
+        /* Apgaubiantis konteineris - vienas apvalus laukas */
+        .add-wrap {
+            display: flex;
+            align-items: center;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .add-wrap:focus-within { border-color: var(--blue); }
+
+        #new-todo {
+            flex: 1;
+            padding: 18px 24px;
+            font-size: 17px;
+            border-radius: 0;
+            border: none;
+            background: transparent;
+            color: var(--text);
+            outline: none;
+        }
+
+        .btn-add {
+            padding: 18px 28px;
+            font-size: 16px;
+            font-weight: 700;
+            flex-shrink: 0;
+            border-radius: 0;
+            border-left: 1px solid var(--border);
+        }
+        .btn-add:hover { transform: none; opacity: 0.9; }
+
+        /* ====================================================
+           RESPONSIVE DESIGN
+           ==================================================== */
+
+        /* PLANŠETĖ */
+        @media (max-width: 768px) {
+            .main { padding: 20px 20px 0 20px; }
+            .topbar { padding: 14px 20px; }
+            .bottom-bar { padding: 16px 0 24px 0; }
+        }
+
+        /* TELEFONAS */
+        @media (max-width: 520px) {
+            .main { padding: 14px 14px 0 14px; }
+            .topbar { padding: 12px 14px; }
+            .topbar h2 { font-size: 17px; }
+            .bottom-bar { padding: 12px 0 20px 0; }
+
+            #new-todo { font-size: 15px; padding: 16px 18px; }
+            .btn-add   { padding: 16px 20px; font-size: 14px; }
+
+            .filter-btn { padding: 8px 16px; font-size: 13px; }
+            .todo-title { font-size: 15px; }
+            .todo-actions { width: 100%; justify-content: flex-end; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- AUTENTIKACIJOS EKRANAS -->
+<div id="auth-screen">
+    <div class="auth-card">
+        <h1>📝 Todo programa</h1>
+
+        <div class="field">
+            <label for="username">Vartotojo vardas</label>
+            <input type="text" id="username" placeholder="Įveskite vardą..." />
+        </div>
+
+        <div class="field">
+            <label for="password">Slaptažodis</label>
+            <input type="password" id="password" placeholder="Įveskite slaptažodį..." />
+        </div>
+
+        <div id="auth-msg" class="msg"></div>
+
+        <div class="auth-actions">
+            <button class="btn-primary" onclick="login()">Prisijungti</button>
+            <button class="btn-ghost"   onclick="register()">Registruotis</button>
+        </div>
+    </div>
+</div>
+
+<!-- PAGRINDINIS EKRANAS -->
+<div id="app-screen">
+
+    <!-- VIRŠUS -->
+    <div class="topbar">
+        <h2>📝 Užduotys &mdash; <span id="username-label"></span></h2>
+        <button class="btn-ghost btn-logout" onclick="logout()">Atsijungti</button>
+    </div>
+
+    <!-- VISAS TURINYS -->
+    <div class="main">
+
+        <!-- FILTRAI VIRŠUJE -->
+        <div class="filters">
+            <button class="filter-btn active" onclick="setFilter(null, this)">📋 Visos</button>
+            <button class="filter-btn"        onclick="setFilter(false, this)">⏳ Aktyvios</button>
+            <button class="filter-btn"        onclick="setFilter(true, this)">✅ Atliktos</button>
+        </div>
+
+        <div id="app-msg" class="msg"></div>
+
+        <!-- UŽDUOČIŲ SĄRAŠAS -->
+        <div id="todo-list"></div>
+
+        <!-- ĮVESTIS APAČIOJE -->
+        <div class="bottom-bar">
+            <div class="add-wrap">
+                <input type="text" id="new-todo" placeholder="Nauja užduotis..." />
+                <button class="btn-primary btn-add" onclick="createTodo()">Pridėti</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const API = "http://localhost:8000";
+
+    let token    = localStorage.getItem("token");
+    let username = localStorage.getItem("username");
+    let currentFilter = null;
+
+    // ----------------------------------------------------------------
+    // PAGALBINĖS FUNKCIJOS
+    // ----------------------------------------------------------------
+
+    function showMsg(elementId, text, type) {
+        const el = document.getElementById(elementId);
+        el.textContent = text;
+        el.className = `msg ${type}`;
+        el.style.display = "block";
+        setTimeout(() => { el.style.display = "none"; }, 4000);
+    }
+
+    /**
+     * Bendras API užklausų kūrėjas.
+     * method  - GET / POST / PATCH / DELETE
+     * path    - pvz. "/todos/5"
+     * body    - objektas siunčiamas kaip JSON (nebūtina)
+     */
+    async function api(method, path, body = null) {
+        const options = {
+            method,
+            headers: {
+                "Content-Type": "application/json",
+                ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            }
+        };
+        if (body) options.body = JSON.stringify(body);
+
+        const response = await fetch(`${API}${path}`, options);
+        if (response.status === 204) return null;
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Serverio klaida");
+        return data;
+    }
+
+    // ----------------------------------------------------------------
+    // EKRANŲ PERJUNGIMAS
+    // ----------------------------------------------------------------
+
+    function showAuthScreen() {
+        document.getElementById("auth-screen").style.display = "flex";
+        document.getElementById("app-screen").style.display  = "none";
+    }
+
+    function showAppScreen() {
+        document.getElementById("auth-screen").style.display = "none";
+        document.getElementById("app-screen").style.display  = "flex";
+        document.getElementById("username-label").textContent = username;
+    }
+
+    // ----------------------------------------------------------------
+    // AUTENTIKACIJA
+    // ----------------------------------------------------------------
+
+    /** POST /register */
+    async function register() {
+        const uname = document.getElementById("username").value.trim();
+        const pass  = document.getElementById("password").value;
+        try {
+            await api("POST", "/register", { username: uname, password: pass });
+            showMsg("auth-msg", "Registracija sėkminga! Galite prisijungti.", "success");
+        } catch (err) {
+            showMsg("auth-msg", err.message, "error");
+        }
+    }
+
+    /** POST /login */
+    async function login() {
+        const uname = document.getElementById("username").value.trim();
+        const pass  = document.getElementById("password").value;
+        try {
+            const data = await api("POST", "/login", { username: uname, password: pass });
+            token    = data.token;
+            username = data.username;
+            localStorage.setItem("token",    token);
+            localStorage.setItem("username", username);
+            showAppScreen();
+            loadTodos();
+        } catch (err) {
+            showMsg("auth-msg", err.message, "error");
+        }
+    }
+
+    /** POST /logout */
+    async function logout() {
+        try { await api("POST", "/logout"); } catch (_) {}
+        token = null; username = null;
+        localStorage.removeItem("token");
+        localStorage.removeItem("username");
+        showAuthScreen();
+    }
+
+    // ----------------------------------------------------------------
+    // FILTRAVIMAS
+    // ----------------------------------------------------------------
+
+    function setFilter(value, btn) {
+        currentFilter = value;
+        document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        loadTodos();
+    }
+
+    // ----------------------------------------------------------------
+    // SKAITYMAS
+    // ----------------------------------------------------------------
+
+    /** GET /todos arba GET /todos?done=true/false */
+    async function loadTodos() {
+        let path = "/todos";
+        if (currentFilter !== null) path += `?done=${currentFilter}`;
+        try {
+            const todos = await api("GET", path);
+            renderTodos(todos);
+        } catch (err) {
+            showMsg("app-msg", err.message, "error");
+        }
+    }
+
+    function renderTodos(todos) {
+        const container = document.getElementById("todo-list");
+        if (todos.length === 0) {
+            container.innerHTML = `<div class="empty-msg">Nėra užduočių 🎉</div>`;
+            return;
+        }
+        // Rūšiuojame: neatliktos viršuje, atliktos apačioje
+        const sorted = [...todos].sort((a, b) => a.done - b.done);
+        container.innerHTML = sorted.map(todo => `
+            <div class="todo-item" id="item-${todo.id}">
+                <input type="checkbox" ${todo.done ? "checked" : ""}
+                    onchange="toggleDone(${todo.id}, this.checked)" />
+                <span class="todo-title ${todo.done ? 'done' : ''}"
+                    id="title-${todo.id}"
+                    ondblclick="startEdit(${todo.id}, '${escapeQuotes(todo.title)}')"
+                    title="Du kartus spustelėkite norėdami redaguoti">
+                    ${escapeHtml(todo.title)}
+                </span>
+                <div class="todo-actions">
+                    <button class="btn-ghost btn-sm"
+                        onclick="startEdit(${todo.id}, '${escapeQuotes(todo.title)}')">✏️</button>
+                    <button class="btn-delete btn-sm"
+                        onclick="deleteTodo(${todo.id})">🗑️</button>
+                </div>
+            </div>
+        `).join("");
+    }
+
+    // ----------------------------------------------------------------
+    // KŪRIMAS
+    // ----------------------------------------------------------------
+
+    /** POST /todos */
+    async function createTodo() {
+        const input = document.getElementById("new-todo");
+        const title = input.value.trim();
+        if (!title) { showMsg("app-msg", "Įveskite užduoties pavadinimą", "error"); return; }
+        try {
+            await api("POST", "/todos", { title });
+            input.value = "";
+            loadTodos();
+        } catch (err) {
+            showMsg("app-msg", err.message, "error");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("new-todo").addEventListener("keydown", e => {
+            if (e.key === "Enter") createTodo();
+        });
+        document.getElementById("password").addEventListener("keydown", e => {
+            if (e.key === "Enter") login();
+        });
+    });
+
+    // ----------------------------------------------------------------
+    // ATNAUJINIMAS (PATCH)
+    // ----------------------------------------------------------------
+
+    /** PATCH /todos/{id} - checkbox */
+    async function toggleDone(id, done) {
+        try {
+            await api("PATCH", `/todos/${id}`, { done });
+            loadTodos();
+        } catch (err) { showMsg("app-msg", err.message, "error"); }
+    }
+
+    function startEdit(id, currentTitle) {
+        const item    = document.getElementById(`item-${id}`);
+        const titleEl = document.getElementById(`title-${id}`);
+        titleEl.style.display = "none";
+
+        const input = document.createElement("input");
+        input.type      = "text";
+        input.className = "edit-input";
+        input.value     = currentTitle;
+        input.id        = `edit-${id}`;
+        input.addEventListener("keydown", e => {
+            if (e.key === "Enter")  saveEdit(id);
+            if (e.key === "Escape") loadTodos();
+        });
+
+        const actionsEl = item.querySelector(".todo-actions");
+        item.insertBefore(input, actionsEl);
+        input.focus(); input.select();
+
+        actionsEl.innerHTML = `
+            <button class="btn-success btn-sm" onclick="saveEdit(${id})">✓</button>
+            <button class="btn-ghost btn-sm"   onclick="loadTodos()">✕</button>
+        `;
+    }
+
+    /** PATCH /todos/{id} - pavadinimo keitimas */
+    async function saveEdit(id) {
+        const input = document.getElementById(`edit-${id}`);
+        const title = input.value.trim();
+        if (!title) { showMsg("app-msg", "Pavadinimas negali būti tuščias", "error"); return; }
+        try {
+            await api("PATCH", `/todos/${id}`, { title });
+            loadTodos();
+        } catch (err) { showMsg("app-msg", err.message, "error"); }
+    }
+
+    // ----------------------------------------------------------------
+    // TRYNIMAS
+    // ----------------------------------------------------------------
+
+    /**
+     * Parodo patvirtinimo popup'ą po delete mygtuku.
+     * Jei patvirtina - kviečia confirmDelete(), jei ne - uždaro.
+     */
+    function deleteTodo(id) {
+        // Jei jau atidarytas koks nors popup - uždarome
+        document.querySelectorAll(".delete-confirm").forEach(el => el.remove());
+
+        const item = document.getElementById(`item-${id}`);
+
+        // Sukuriame popup elementą
+        const popup = document.createElement("div");
+        popup.className = "delete-confirm";
+        popup.id = `confirm-${id}`;
+        popup.innerHTML = `
+            <span>Ištrinti užduotį?</span>
+            <button class="btn-delete btn-sm" onclick="confirmDelete(${id})">Ištrinti</button>
+            <button class="btn-ghost btn-sm"  onclick="closeConfirm(${id})">Atšaukti</button>
+        `;
+
+        // Dedame popup'ą į todo-item (po visu turiniu)
+        item.appendChild(popup);
+    }
+
+    function closeConfirm(id) {
+        const popup = document.getElementById(`confirm-${id}`);
+        if (popup) popup.remove();
+    }
+
+    /** DELETE /todos/{id} - iškviečiama tik patvirtinus */
+    async function confirmDelete(id) {
+        closeConfirm(id);
+        try {
+            await api("DELETE", `/todos/${id}`);
+            loadTodos();
+        } catch (err) { showMsg("app-msg", err.message, "error"); }
+    }
+
+    // ----------------------------------------------------------------
+    // SAUGOS FUNKCIJOS
+    // ----------------------------------------------------------------
+    function escapeHtml(text) {
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    function escapeQuotes(text) {
+        return text.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    }
+
+    // ----------------------------------------------------------------
+    // PALEIDIMAS
+    // ----------------------------------------------------------------
+    if (token) { showAppScreen(); loadTodos(); }
+    else        { showAuthScreen(); }
+</script>
+
+</body>
+</html>
