@@ -93,11 +93,11 @@ init_db()  # Paleidžiame iš karto kai programa startuoja
 # ------------------------------------------------------------
 
 def hash_password(password: str) -> str:
-    """Paverčia slaptažodį į hash'ą (SHA-256). Niekada nesaugome plain text."""
+    #Paverčia slaptažodį į hash'ą (SHA-256). Niekada nesaugome plain text.
     return hashlib.sha256(password.encode()).hexdigest()
 
 def create_token(user_id: int) -> str:
-    """Sukuria atsitiktinį sesijos tokeną ir išsaugo DB."""
+    #Sukuria atsitiktinį sesijos tokeną ir išsaugo DB.
     token = secrets.token_hex(32)  # 64 simbolių atsitiktinis tekstas
     conn = get_db()
     conn.execute(
@@ -218,16 +218,16 @@ def login(body: LoginRequest):
 # Header parametras: Authorization: Bearer <token>
 # Query parametras: ?done=true/false (filtravimas - nebūtinas)
 # ------------------------------------------------------------
+
 @app.get("/todos")
 def get_todos(done: Optional[bool] = None, user_id: int = Depends(get_current_user)):
-    """
-    Grąžina prisijungusio vartotojo užduotis.
-    
-    done - query parametras filtravimui:
-        /todos        -> visos užduotys
-        /todos?done=true  -> tik atliktos
-        /todos?done=false -> tik neatliktos
-    """
+
+    # Grąžina prisijungusio vartotojo užduotis.
+    # done - query parametras filtravimui:
+    #    /todos        -> visos užduotys
+    #    /todos?done=true  -> tik atliktos
+    #    /todos?done=false -> tik neatliktos
+
     conn = get_db()
     
     if done is None:
@@ -256,7 +256,7 @@ def get_todos(done: Optional[bool] = None, user_id: int = Depends(get_current_us
 # ------------------------------------------------------------
 @app.post("/todos", status_code=201)
 def create_todo(body: CreateTodoRequest, user_id: int = Depends(get_current_user)):
-    """Sukuria naują užduotį prisijungusiam vartotojui."""
+    #Sukuria naują užduotį prisijungusiam vartotojui.
     
     # Validavimas
     if len(body.title.strip()) == 0:
@@ -327,7 +327,7 @@ def update_todo(todo_id: int, body: UpdateTodoRequest, user_id: int = Depends(ge
 # ------------------------------------------------------------
 @app.delete("/todos/{todo_id}", status_code=204)
 def delete_todo(todo_id: int, user_id: int = Depends(get_current_user)):
-    """Ištrina užduotį pagal ID."""
+    #Ištrina užduotį pagal ID.
     
     conn = get_db()
     
@@ -354,7 +354,7 @@ def delete_todo(todo_id: int, user_id: int = Depends(get_current_user)):
 # ------------------------------------------------------------
 @app.post("/logout")
 def logout(user_id: int = Depends(get_current_user), authorization: str = Header(...)):
-    """Panaikina sesijos tokeną."""
+    #Panaikina sesijos tokeną.
     token = authorization.split(" ")[1]
     conn = get_db()
     conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
