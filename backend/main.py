@@ -72,6 +72,7 @@ def init_db():
             user_id   INTEGER NOT NULL,
             title     TEXT NOT NULL,
             done      INTEGER NOT NULL DEFAULT 0,
+            position  INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
     """)
@@ -153,6 +154,7 @@ class CreateTodoRequest(BaseModel):
 class UpdateTodoRequest(BaseModel):
     title: Optional[str] = None   # Galima keisti pavadinimą (nebūtina)
     done: Optional[bool] = None   # Galima keisti statusą (nebūtina)
+    position: Optional[int] = None  # Galima keisti poziciją (nebūtina)
 
 # ============================================================
 # API ENDPOINT'AI
@@ -221,32 +223,22 @@ def login(body: LoginRequest):
 
 @app.get("/todos")
 def get_todos(done: Optional[bool] = None, user_id: int = Depends(get_current_user)):
-
-    # Grąžina prisijungusio vartotojo užduotis.
-    # done - query parametras filtravimui:
-    #    /todos        -> visos užduotys
-    #    /todos?done=true  -> tik atliktos
-    #    /todos?done=false -> tik neatliktos
-
     conn = get_db()
     
     if done is None:
-        # Jokio filtro - grąžiname visas
         rows = conn.execute(
-            "SELECT id, title, done FROM todos WHERE user_id = ?",
+            "SELECT id, title, done, position FROM todos WHERE user_id = ? ORDER BY position ASC",
             (user_id,)
         ).fetchall()
     else:
-        # Filtruojame pagal statusą
         rows = conn.execute(
-            "SELECT id, title, done FROM todos WHERE user_id = ? AND done = ?",
+            "SELECT id, title, done, position FROM todos WHERE user_id = ? AND done = ? ORDER BY position ASC",
             (user_id, 1 if done else 0)
         ).fetchall()
     
     conn.close()
     
-    # Paverčiame SQLite eilutes į žodynus
-    return [{"id": r["id"], "title": r["title"], "done": bool(r["done"])} for r in rows]
+    return [{"id": r["id"], "title": r["title"], "done": bool(r["done"]), "position": r["position"]} for r in rows]
 
 # ------------------------------------------------------------
 # 4. POST /todos - Sukurti naują užduotį
@@ -318,6 +310,26 @@ def update_todo(todo_id: int, body: UpdateTodoRequest, user_id: int = Depends(ge
     conn.close()
     
     return {"id": updated["id"], "title": updated["title"], "done": bool(updated["done"])}
+
+# ------------------------------------------------------------
+# 5.1 POST /todos/reorder - Pakeisti užduočių eiliškumą
+# HTTP metodas: POST (siunčiame naują eiliškumą)
+# Header parametras: Authorization
+# Body parametrai: todo_ids (sąrašas užduočių ID nauja tvarka)
+# ------------------------------------------------------------
+
+@app.post("/todos/reorder")
+def reorder_todos(todo_ids: list[int], user_id: int = Depends(get_current_user)):
+    conn = get_db()
+    # Atnaujiname kiekvienos užduoties poziciją pagal jos vietą sąraše
+    for index, todo_id in enumerate(todo_ids):
+        conn.execute(
+            "UPDATE todos SET position = ? WHERE id = ? AND user_id = ?",
+            (index, todo_id, user_id)
+        )
+    conn.commit()
+    conn.close()
+    return {"message": "Eiliškumas atnaujintas"}
 
 # ------------------------------------------------------------
 # 6. DELETE /todos/{todo_id} - Ištrinti užduotį
