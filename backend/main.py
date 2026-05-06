@@ -41,7 +41,7 @@ FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
 
 @app.get("/")
 def root():
-    """Grąžina pagrindinį HTML puslapį."""
+    #Grąžina pagrindinį HTML puslapį.
     index_path = os.path.join(FRONTEND_DIR, "index.html")
     return FileResponse(index_path)
 
@@ -51,13 +51,13 @@ def root():
 DB_FILE = "todos.db"
 
 def get_db():
-    """Grąžina ryšį su SQLite duomenų baze."""
+    #Grąžina ryšį su SQLite duomenų baze.
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row  # Leidžia pasiekti stulpelius pagal pavadinimą
     return conn
 
 def init_db():
-    """Sukuria lenteles, jei jų dar nėra."""
+    #Sukuria lenteles, jei jų dar nėra.
     conn = get_db()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS users (
@@ -167,7 +167,7 @@ class UpdateTodoRequest(BaseModel):
 # ------------------------------------------------------------
 @app.post("/register", status_code=201)
 def register(body: RegisterRequest):
-    """Sukuria naują vartotoją."""
+    #Sukuria naują vartotoją.
     
     # Validavimas - tikriname ar laukai ne tušti
     if len(body.username.strip()) < 3:
@@ -198,7 +198,7 @@ def register(body: RegisterRequest):
 # ------------------------------------------------------------
 @app.post("/login")
 def login(body: LoginRequest):
-    """Patikrina vartotoją ir grąžina sesijos tokeną."""
+    #Patikrina vartotoją ir grąžina sesijos tokeną.
     
     conn = get_db()
     user = conn.execute(
@@ -274,11 +274,11 @@ def create_todo(body: CreateTodoRequest, user_id: int = Depends(get_current_user
 # ------------------------------------------------------------
 @app.patch("/todos/{todo_id}")
 def update_todo(todo_id: int, body: UpdateTodoRequest, user_id: int = Depends(get_current_user)):
-    """
-    Atnaujina užduoties pavadinimą ir/arba statusą.
     
-    todo_id - path parametras (dalis URL'o): /todos/42
-    """
+    #Atnaujina užduoties pavadinimą ir/arba statusą.
+    
+    #todo_id - path parametras (dalis URL'o): /todos/42
+    
     conn = get_db()
     
     # Patikriname ar ši užduotis priklauso šiam vartotojui

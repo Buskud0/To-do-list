@@ -223,8 +223,17 @@
             gap: 14px;
             transition: border-color 0.2s;
             flex-wrap: wrap;
+            cursor: grab;
         }
         .todo-item:hover { border-color: var(--text-dim); }
+
+        .todo-item:active { cursor: grabbing; }
+
+        /* SortableJS klasė, rodanti kur nukris elementas */
+        .sortable-ghost {
+            opacity: 0.4;
+            background: var(--blue-dk) !important;
+        }
 
         .todo-item input[type="checkbox"] {
             width: 20px;
@@ -456,7 +465,7 @@
      */
     async function api(method, path, body = null) {
         const options = {
-            method,
+            method, // GET, POST, PATCH, DELETE
             headers: {
                 "Content-Type": "application/json",
                 ...(token ? { "Authorization": `Bearer ${token}` } : {})
@@ -562,16 +571,15 @@
             container.innerHTML = `<div class="empty-msg">Nėra užduočių 🎉</div>`;
             return;
         }
-        // Rūšiuojame: neatliktos viršuje, atliktos apačioje
-        const sorted = [...todos].sort((a, b) => a.done - b.done);
-        container.innerHTML = sorted.map(todo => `
-            <div class="todo-item" id="item-${todo.id}">
+        // Pašalinome automatinį sort(), kad rodytų pagal DB 'position'
+        container.innerHTML = todos.map(todo => `
+            <div class="todo-item" id="item-${todo.id}" data-id="${todo.id}">
                 <input type="checkbox" ${todo.done ? "checked" : ""}
                     onchange="toggleDone(${todo.id}, this.checked)" />
                 <span class="todo-title ${todo.done ? 'done' : ''}"
                     id="title-${todo.id}"
                     ondblclick="startEdit(${todo.id}, '${escapeQuotes(todo.title)}')"
-                    title="Du kartus spustelėkite norėdami redaguoti">
+                    title="Tempkite, norėdami pakeisti vietą">
                     ${escapeHtml(todo.title)}
                 </span>
                 <div class="todo-actions">
@@ -582,6 +590,9 @@
                 </div>
             </div>
         `).join("");
+
+        // Svarbu: Inicijuojame vilkimą kiekvieną kartą perbraižius sąrašą
+        initSortable();
     }
 
     // ----------------------------------------------------------------
@@ -716,6 +727,38 @@
     // ----------------------------------------------------------------
     if (token) { showAppScreen(); loadTodos(); }
     else        { showAuthScreen(); }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+
+<script>
+    function initSortable() {
+        const list = document.getElementById('todo-list');
+        if (!list || list.querySelector('.empty-msg')) return;
+
+        // Jei Sortable jau buvo inicijuotas, jį sunaikiname ir sukuriame iš naujo
+        // (tai apsaugo nuo dvigubo vilkimo trikdžių)
+        if (window.sortableInstance) window.sortableInstance.destroy();
+
+        window.sortableInstance = Sortable.create(list, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: async function () {
+                const itemIds = Array.from(list.children)
+                                    .map(item => parseInt(item.dataset.id))
+                                    .filter(id => !isNaN(id));
+
+                if (itemIds.length === 0) return;
+
+                try {
+                    await api("POST", "/todos/reorder", itemIds);
+                    console.log("Tvarka išsaugota:", itemIds);
+                } catch (err) {
+                    showMsg("app-msg", "Nepavyko išsaugoti eiliškumo: " + err.message, "error");
+                }
+            }
+        });
+    }
 </script>
 
 </body>
