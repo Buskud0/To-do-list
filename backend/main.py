@@ -5,6 +5,8 @@
 #             uvicorn main:app --reload
 # ============================================================
 
+from datetime import datetime
+
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles  # Statinių failų servingui
@@ -72,6 +74,7 @@ def init_db():
             user_id   INTEGER NOT NULL,
             title     TEXT NOT NULL,
             done      INTEGER NOT NULL DEFAULT 0,
+            completed_at DATETIME DEFAULT NULL,
             position  INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )
@@ -155,6 +158,7 @@ class UpdateTodoRequest(BaseModel):
     title: Optional[str] = None   # Galima keisti pavadinimą (nebūtina)
     done: Optional[bool] = None   # Galima keisti statusą (nebūtina)
     position: Optional[int] = None  # Galima keisti poziciją (nebūtina)
+    completed_at: Optional[datetime] = None  # Galima keisti užduoties užbaigimo laiką (nebūtina)
 
 # ============================================================
 # API ENDPOINT'AI
@@ -227,18 +231,18 @@ def get_todos(done: Optional[bool] = None, user_id: int = Depends(get_current_us
     
     if done is None:
         rows = conn.execute(
-            "SELECT id, title, done, position FROM todos WHERE user_id = ? ORDER BY position ASC",
+            "SELECT id, title, done, completed_at, position FROM todos WHERE user_id = ? ORDER BY done ASC, completed_at DESC, position ASC",
             (user_id,)
         ).fetchall()
     else:
         rows = conn.execute(
-            "SELECT id, title, done, position FROM todos WHERE user_id = ? AND done = ? ORDER BY position ASC",
+            "SELECT id, title, done, completed_at, position FROM todos WHERE user_id = ? AND done = ? ORDER BY position ASC",
             (user_id, 1 if done else 0)
         ).fetchall()
     
     conn.close()
     
-    return [{"id": r["id"], "title": r["title"], "done": bool(r["done"]), "position": r["position"]} for r in rows]
+    return [{"id": r["id"], "title": r["title"], "done": bool(r["done"]), "completed_at": r["completed_at"], "position": r["position"]} for r in rows]
 
 # ------------------------------------------------------------
 # 4. POST /todos - Sukurti naują užduotį
@@ -300,12 +304,12 @@ def update_todo(todo_id: int, body: UpdateTodoRequest, user_id: int = Depends(ge
     
     if body.done is not None:
         conn.execute("UPDATE todos SET done = ? WHERE id = ?", (1 if body.done else 0, todo_id))
-    
+        conn.execute("UPDATE todos SET completed_at = ? WHERE id = ?", (datetime.now() if body.done else None, todo_id))
     conn.commit()
     
     # Grąžiname atnaujintą objektą
     updated = conn.execute(
-        "SELECT id, title, done FROM todos WHERE id = ?", (todo_id,)
+        "SELECT id, title, done, completed_at FROM todos WHERE id = ?", (todo_id,)
     ).fetchone()
     conn.close()
     
